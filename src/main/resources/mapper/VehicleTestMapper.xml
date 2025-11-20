@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.test_cb.mapper.VehicleTestMapper">
+    <resultMap id="BaseResultMap" type="com.example.test_cb.entity.VehicleTest">
+        <id column="id" property="id" jdbcType="INTEGER"/>
+        <result column="fy" property="fy" jdbcType="DOUBLE"/>
+        <result column="clmc" property="clmc" jdbcType="VARCHAR"/>
+        <result column="cph" property="cph" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, fy, clmc, cph
+    </sql>
+
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM uf_csclxxb
+    </select>
+
+    <select id="selectByCondition" resultMap="BaseResultMap" parameterType="com.example.test_cb.entity.VehicleTest">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM uf_csclxxb
+        <where>
+            <if test="vehicleTest.id != null">
+                AND id = #{vehicleTest.id}
+            </if>
+            <if test="vehicleTest.fy != null">
+                AND fy = #{vehicleTest.fy}
+            </if>
+            <if test="vehicleTest.clmc != null and vehicleTest.clmc != ''">
+                AND clmc LIKE CONCAT('%', #{vehicleTest.clmc}, '%')
+            </if>
+            <if test="vehicleTest.cph != null and vehicleTest.cph != ''">
+                AND cph LIKE CONCAT('%', #{vehicleTest.cph}, '%')
+            </if>
+        </where>
+    </select>
+
+    <select id="selectByPage" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM uf_csclxxb
+        <where>
+            <if test="vehicleTest.id != null">
+                AND id = #{vehicleTest.id}
+            </if>
+            <if test="vehicleTest.fy != null">
+                AND fy = #{vehicleTest.fy}
+            </if>
+            <if test="vehicleTest.clmc != null and vehicleTest.clmc != ''">
+                AND clmc LIKE CONCAT('%', #{vehicleTest.clmc}, '%')
+            </if>
+            <if test="vehicleTest.cph != null and vehicleTest.cph != ''">
+                AND cph LIKE CONCAT('%', #{vehicleTest.cph}, '%')
+            </if>
+        </where>
+        ORDER BY id
+        OFFSET (#{pageNum} - 1) * #{pageSize} ROWS FETCH NEXT #{pageSize} ROWS ONLY
+    </select>
+
+    <insert id="insertBatch" parameterType="java.util.List">
+        INSERT INTO uf_csclxxb (fy, clmc, cph)
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.fy}, #{item.clmc}, #{item.cph})
+        </foreach>
+    </insert>
+
+    <update id="updateBatch" parameterType="java.util.List">
+        <foreach collection="list" item="item" separator=";">
+            UPDATE uf_csclxxb
+            SET
+            fy = #{item.fy},
+            clmc = #{item.clmc},
+            cph = #{item.cph}
+            WHERE id = #{item.id}
+        </foreach>
+    </update>
+
+    <delete id="deleteBatch" parameterType="java.util.List">
+        DELETE FROM uf_csclxxb
+        WHERE id IN
+        <foreach collection="list" item="item" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+    </delete>
+</mapper>

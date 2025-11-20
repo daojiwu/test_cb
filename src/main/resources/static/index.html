@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>车辆测试数据管理</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        .pagination button {
+            margin: 0 5px;
+            padding: 5px 10px;
+        }
+        .batch-actions {
+            margin: 20px 0;
+        }
+        .batch-actions button {
+            margin-right: 10px;
+            padding: 8px 15px;
+        }
+    </style>
+</head>
+<body>
+    <h1>车辆测试数据管理</h1>
+    <div class="batch-actions">
+        <button id="addBatch">批量添加</button>
+        <button id="deleteBatch">批量删除</button>
+        <button id="updateBatch">批量修改</button>
+        <button id="importBatch">批量导入</button>
+        <button id="exportBatch">批量导出</button>
+    </div>
+    <table id="dataTable">
+        <thead>
+            <tr>
+                <th><input type="checkbox" id="selectAll"></th>
+                <th>ID</th>
+                <th>名称</th>
+                <th>描述</th>
+            </tr>
+        </thead>
+        <tbody id="dataBody"></tbody>
+    </table>
+    <div class="pagination">
+        <button id="prevPage">上一页</button>
+        <span id="pageInfo">第1页</span>
+        <button id="nextPage">下一页</button>
+    </div>
+
+    <script>
+        let currentPage = 1;
+        const pageSize = 10;
+
+        // 加载分页数据
+        function loadData(page) {
+            $.ajax({
+                url: `http://localhost:8081/vehicle/queryByPage?pageNum=${page}&pageSize=${pageSize}`,
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({}),
+                crossDomain: true,
+                xhrFields: {
+                    withCredentials: false
+                },
+                success: function(data) {
+                    renderTable(data);
+                    document.getElementById('pageInfo').textContent = `第${page}页`;
+                },
+                error: function(error) {
+                    console.error('加载数据失败:', error);
+                }
+            });
+        }
+
+        // 渲染表格数据
+        function renderTable(data) {
+            const tbody = document.getElementById('dataBody');
+            tbody.innerHTML = '';
+            data.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><input type="checkbox" class="rowCheckbox" data-id="${item.id}"></td>
+                    <td>${item.id}</td>
+                    <td>${item.name || ''}</td>
+                    <td>${item.description || ''}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // 初始化页面
+        document.addEventListener('DOMContentLoaded', () => {
+            loadData(currentPage);
+
+            // 分页按钮事件
+            document.getElementById('prevPage').addEventListener('click', () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    loadData(currentPage);
+                }
+            });
+
+            document.getElementById('nextPage').addEventListener('click', () => {
+                currentPage++;
+                loadData(currentPage);
+            });
+
+            // 全选/取消全选
+            document.getElementById('selectAll').addEventListener('change', (e) => {
+                const checkboxes = document.querySelectorAll('.rowCheckbox');
+                checkboxes.forEach(checkbox => {
+                    checkbox.checked = e.target.checked;
+                });
+            });
+
+            // 批量操作按钮事件
+            document.getElementById('addBatch').addEventListener('click', () => {
+                alert('批量添加功能待实现');
+            });
+
+            document.getElementById('deleteBatch').addEventListener('click', () => {
+                const selectedIds = Array.from(document.querySelectorAll('.rowCheckbox:checked')).map(checkbox => checkbox.dataset.id);
+                if (selectedIds.length === 0) {
+                    alert('请至少选择一条数据');
+                    return;
+                }
+                $.ajax({
+                    url: '/vehicle/deleteBatch',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(selectedIds),
+                    crossDomain: true,
+                    xhrFields: {
+                        withCredentials: false
+                    },
+                    success: function(result) {
+                        alert(`删除成功: ${result}条数据`);
+                        loadData(currentPage);
+                    },
+                    error: function(error) {
+                        console.error('删除失败:', error);
+                    }
+                });
+            });
+
+            document.getElementById('updateBatch').addEventListener('click', () => {
+                alert('批量修改功能待实现');
+            });
+
+            document.getElementById('importBatch').addEventListener('click', () => {
+                alert('批量导入功能待实现');
+            });
+
+            document.getElementById('exportBatch').addEventListener('click', () => {
+                window.location.href = '/vehicle/exportExcel';
+            });
+        });
+    </script>
+</body>
+</html>
