@@ -90,9 +90,23 @@ public class ExcelUtils {
         }
     }
 
+    public static void main(String[] args) {
+        String requestId="809261";
+        String dateStr="2023-09-01";
+      //  String oldr="零部件研发领料申请流程-彭则-2025-09-02";
+        // 创建工具类实例（使用默认配置）
+        StandaloneSqlServerUtils utils = new StandaloneSqlServerUtils();
+        String sqlN="SELECT * FROM  workflow_requestbase where   requestid=? ";
+        List<Map<String, Object>> resultN = utils.executeQuery(sqlN, requestId);
+        String oldrequestname=resultN.get(0).get("requestname").toString();
+        System.out.println("oldrequestname:"+oldrequestname);
+//        String oldrequestname="零部件研发领料申请流程-彭则-2025-09-02";
+        String requestname=oldrequestname.substring(0,oldrequestname.length() - 10)+dateStr;
+        System.out.println("requestname:"+requestname);
+    }
 
     public static void appendOneToAllCells(Boolean isUpd,List<ExcelColumnInfo> columnInfos,String sourceFilePath, String targetFilePath,String formName,
-                                           String pre,String lcmc,String personName,String[] nodeArr) throws IOException {
+                                           String pre,String[] nodeArr) throws IOException {
 
 
         //try()中的流会自动关闭，不需要手动关闭（需要实现 AutoCloseable）
@@ -130,43 +144,50 @@ public class ExcelUtils {
                     Date createDate = null;
                     // 请求id
                     String requestId = null;
-                    // 新新流程编号
+                    // 新流程编号
                     String newProcessNo = null ;
+                    // 新流程标题
+                    String newProcessTitle = null ;
                     Cell requestIdCell = null;
                     Cell newProcessNoCell = null;
+                    Cell newProcessTitleCell = null;
                     for (int j = 0; j < columnInfos.size(); j++){
                         ExcelColumnInfo info=columnInfos.get(j);
                         Cell originalCell = originalRow.getCell(info.getColumnIndex());
                         Cell newCell = newRow.createCell(info.getColumnIndex());
                         //保留原单元格的属性格式
                         copyCellStyle(originalSheet,newSheet,newWorkbook, originalCell, newCell);
+                        Object cellData = getCellDataAsObject(originalCell);
 
                         //特殊处理
                         switch (info.getMappingVariable()){
                             case "process_code":// 原流程编号
-                                processNo=getCellDataAsObject(originalCell).toString();
+                                processNo=cellData==null?"":cellData.toString();
                                 newCell.setCellValue(processNo);
                                 break;
                             case "create_time"://修改时间起点
-                                createDate=(Date) getCellDataAsObject(originalCell);
+                                createDate=(Date)cellData;
                                 newCell.setCellValue(createDate);
                                 break;
                             case "request_id"://请求id
-                                requestId=originalCell!=null?getCellDataAsObject(originalCell).toString():"";
+                                requestId=cellData==null?"":cellData.toString();
                                 requestIdCell = newCell;
                                 break;
                             case "new_process_code"://新新流程编号
-                                newProcessNo=originalCell!=null?getCellDataAsObject(originalCell).toString():"";
+                                newProcessNo=cellData==null?"":cellData.toString();
                                 newProcessNoCell=newCell;
+                                break;
+                            case "new_process_title"://新新流程标题
+                                newProcessTitle=cellData==null?"":cellData.toString();
+                                newProcessTitleCell=newCell;
                                 break;
                             default:
                                 if (originalCell != null) {
-                                    Object value = getCellDataAsObject(originalCell);
-                                    if (value != null) {
-                                        if(value instanceof Date){ //需要转为时间才能在单元格展示自定义格式
-                                            newCell.setCellValue((Date) value);
+                                    if (cellData != null) {
+                                        if(cellData instanceof Date){ //需要转为时间才能在单元格展示自定义格式
+                                            newCell.setCellValue((Date) cellData);
                                         }else {
-                                            newCell.setCellValue(value.toString());
+                                            newCell.setCellValue(cellData.toString());
                                         }
                                     }
                                 }
@@ -184,6 +205,12 @@ public class ExcelUtils {
                                 String paramQuery = "select * from "+formName+"  where lcbh=?";
                                 List<Map<String, Object>> paramResults = utils.executeQuery(paramQuery, processNo);
                                 requestId=paramResults.get(0).get("requestid").toString();
+                            }
+                            if(newProcessTitle==null||newProcessTitle==""){//存在新流程标题则无需查询
+                                String sqlN="SELECT * FROM  workflow_requestbase where   requestid=? ";
+                                List<Map<String, Object>> resultN = utils.executeQuery(sqlN, requestId);
+                                String oldrequestname=resultN.get(0).get("requestname").toString();
+                                newProcessTitle=oldrequestname.substring(0,oldrequestname.length() - 10)+date;
                             }
 
                             //判断是否归档
@@ -222,35 +249,36 @@ public class ExcelUtils {
                                     newProcessNo="当天的流程条数超过四位数，无法存储";
                                 }
 
-                                if(isUpd&&newProcessNo!=null&&newProcessNo!=""&&newProcessNo!="当天的流程条数超过四位数，无法存储"){
+                                if(newProcessNo!=null&&newProcessNo!=""&&newProcessNo!="当天的流程条数超过四位数，无法存储"){
                                     //修改数据
-                                    //流程编号 提单日期  申请日期
-                                    String sql3="update "+formName+" set lcbh= ? ,tdrq=?,sqrq=? where requestid=? ";
-                                    int updateCount1 =utils.executeUpdate(sql3,newProcessNo,date,date, requestId);
-                                    //标题  ？？？   创建时间    请求标识（流程编号）
-                                    String requestname=lcmc+"-"+personName+"-"+date;
-                                    String sql4="update workflow_requestbase set  " +
-                                            "   requestname=?,requestnamenew=? ,createdate=?, requestmark=?  " +
-                                            "where requestid = ?";
-                                    int updateCount2 = utils.executeUpdate(sql4,requestname,requestname,datel,
-                                            newProcessNo, requestId);
+                                    if(isUpd){
+                                        //流程编号 提单日期  申请日期
+                                        String sql3="update "+formName+" set lcbh= ? ,tdrq=?,sqrq=? where requestid=? ";
+                                        int updateCount1 =utils.executeUpdate(sql3,newProcessNo,date,date, requestId);
+                                        //标题  ？？？   创建时间    请求标识（流程编号）
+                                        String sql4="update workflow_requestbase set  " +
+                                                "   requestname=?,requestnamenew=? ,createdate=?, requestmark=?  " +
+                                                "where requestid = ?";
+                                        int updateCount2 = utils.executeUpdate(sql4,newProcessTitle,newProcessTitle,datel,
+                                                newProcessNo, requestId);
 
-                                    for (int j = 0; j < nodeArr.length; j++){
-                                        String[] newDateArr=addDaysToDate(createDate, j);
-                                        String newDate=newDateArr[0]+"-"+newDateArr[1]+"-"+newDateArr[2];
+                                        for (int j = 0; j < nodeArr.length; j++){
+                                            String[] newDateArr=addDaysToDate(createDate, j);
+                                            String newDate=newDateArr[0]+"-"+newDateArr[1]+"-"+newDateArr[2];
 
-                                        // 接收日期   操作日期
-                                        String sql6="update workflow_currentoperator set receivedate=? , " +
-                                                "operatedate = ? where RequestId=? and nodeid=?";
-                                        int updateCount3 = utils.executeUpdate(sql6,newDate,newDate,requestId,
-                                                nodeArr[j]);
-                                        if(j== nodeArr.length-1){
-                                            continue;
-                                        }
-                                        //流转意见时间
-                                        String sql5="update workflow_requestlog set operatedate=?  where " +
-                                                "RequestId= ? and nodeid =?";
-                                        int updateCount4 =utils.executeUpdate(sql5,newDate,requestId,nodeArr[j]);
+                                            // 接收日期   操作日期
+                                            String sql6="update workflow_currentoperator set receivedate=? , " +
+                                                    "operatedate = ? where RequestId=? and nodeid=?";
+                                            int updateCount3 = utils.executeUpdate(sql6,newDate,newDate,requestId,
+                                                    nodeArr[j]);
+                                            if(j== nodeArr.length-1){
+                                                continue;
+                                            }
+                                            //流转意见时间
+                                            String sql5="update workflow_requestlog set operatedate=?  where " +
+                                                    "RequestId= ? and nodeid =?";
+                                            int updateCount4 =utils.executeUpdate(sql5,newDate,requestId,nodeArr[j]);
+                                    }
                                     }
                                 }
 
@@ -268,6 +296,8 @@ public class ExcelUtils {
                    requestIdCell.setCellValue(requestId);
                     // 新流程编号
                    newProcessNoCell.setCellValue(newProcessNo);
+                   // 新流程标题
+                    newProcessTitleCell.setCellValue(newProcessTitle);
 
                 }
 
