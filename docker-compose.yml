@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+    # 如果需要连接 Redis 或其他服务，可以在这里配置
+    # depends_on:
+    #   - redis
+    
+  # 如果需要 Redis 服务，取消下面的注释
+  # redis:
+  #   image: redis:alpine
+  #   ports:
+  #     - "6379:6379"
+  
+  # 如果需要数据库服务，可以根据需要添加
+  # mysql:
+  #   image: mysql:8
+  #   environment:
+  #     MYSQL_ROOT_PASSWORD: root
+  #     MYSQL_DATABASE: testdb
+  #   ports:
+  #     - "3306:3306"

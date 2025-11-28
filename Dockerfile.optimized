@@ -1,0 +1,35 @@
+# 多阶段构建 Dockerfile - 优化版
+# 第一阶段：构建阶段
+FROM maven:3.8-openjdk-8 AS builder
+
+# 设置工作目录
+WORKDIR /build
+
+# 复制 pom.xml 并下载依赖（利用 Docker 层缓存）
+COPY pom.xml .
+RUN mvn dependency:go-offline -B
+
+# 复制源代码
+COPY src ./src
+
+# 构建项目
+RUN mvn clean package -DskipTests
+
+# 第二阶段：运行阶段
+FROM openjdk:8-jre-slim
+
+# 设置工作目录
+WORKDIR /app
+
+# 从构建阶段复制 jar 文件
+COPY --from=builder /build/target/*.jar app.jar
+
+# 暴露端口（项目配置端口）
+EXPOSE 8081
+
+# 创建非 root 用户（安全最佳实践）
+RUN addgroup --system spring && adduser --system spring --ingroup spring
+USER spring:spring
+
+# 运行应用程序
+ENTRYPOINT ["java", "-jar", "app.jar"]
